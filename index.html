@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Quran — Read, Listen, Continue</title>
+<meta name="description" content="Read the complete Qur'an, listen to Maher Al-Muaiqly's recitation, and bookmark your place.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☾</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=Amiri+Quran&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div id="app" class="app" data-theme="light"></div>
+
+<!-- Cookie consent -->
+<div id="cookie-banner" class="cookie-banner glass" hidden role="dialog" aria-label="Cookie preferences" aria-live="polite">
+  <div class="cookie-banner__text">
+    <strong>Your privacy matters</strong>
+    <p>We use a small amount of local storage to remember your bookmarks, reading progress and preferences on this device. No data is sold or shared with advertisers.</p>
+  </div>
+  <div class="cookie-banner__actions">
+    <button type="button" class="btn btn--ghost" id="cookie-reject">Reject</button>
+    <button type="button" class="btn btn--primary" id="cookie-accept">Accept</button>
+  </div>
+</div>
+
+<!-- Toast host -->
+<div id="toast-host" class="toast-host" aria-live="polite"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
