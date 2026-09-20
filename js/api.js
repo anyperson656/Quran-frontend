@@ -2,8 +2,8 @@
 // unreachable, every call rejects with a normal Error and the caller falls
 // back to local storage - the reading experience never breaks because of it.
 
-const BASE_URL = window.QURAN_API_BASE || `http://${location.hostname}:4000/api`;
-
+const RENDER_API = "https://quran-backend-8k4b.onrender.com/api";
+const BASE_URL = window.QURAN_API_BASE || (location.hostname.endsWith("github.io") ? RENDER_API : `http://${location.hostname}:4000/api`);
 async function request(path, options = {}) {
   let res;
   try {
