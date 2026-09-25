@@ -1,7 +1,9 @@
 const BASE_URL = (function () {
   const RENDER_API = "https://quran-backend-8k4b.onrender.com/api";
   if (window.QURAN_API_BASE) return window.QURAN_API_BASE;
-  return location.hostname.endsWith("github.io") ? RENDER_API : `http://${location.hostname}:4000/api`;
+  
+  const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  return isLocal ? "http://localhost:4000/api" : RENDER_API;
 })();
 
 const TOKEN_KEY = "quran.authToken";
