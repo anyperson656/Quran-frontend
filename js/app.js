@@ -152,6 +152,7 @@ function parseHash() {
   if (!name) return { name: "home" };
   if (name === "surah" && param) return { name: "surah", number: parseInt(param, 10), ayah: sub ? parseInt(sub, 10) : null };
   if (name === "bookmarks") return { name: "bookmarks" };
+  if (name === "direction") return { name: "direction" };
   if (name === "settings") return { name: "settings" };
   if (name === "account") return { name: "account" };
   return { name: "home" };
@@ -181,6 +182,7 @@ function renderShell() {
         <a href="#/" data-route="home">Home</a>
         <a href="#/" data-route="surahs">Surahs</a>
         <a href="#/bookmarks" data-route="bookmarks">Bookmarks</a>
+        <a href="#/direction" data-route="direction">Direction & Prayers</a>
         <a href="#/settings" data-route="settings">Settings</a>
       </nav>
       <div class="header-actions">
@@ -793,13 +795,14 @@ function wireCookieBanner() {
    ===================================================== */
 function renderView() {
   document.querySelectorAll("#main-nav a").forEach((a) => a.classList.remove("active"));
-  const routeToNav = { home: "home", surah: "surahs", bookmarks: "bookmarks", settings: "settings" };
+  const routeToNav = { home: "home", surah: "surahs", bookmarks: "bookmarks", direction:"direction", settings: "settings" };
   const active = document.querySelector(`#main-nav a[data-route="${routeToNav[state.route.name] || "home"}"]`);
   if (active) active.classList.add("active");
 
   if (state.route.name === "home") renderHome();
   else if (state.route.name === "surah") renderReader(state.route.number, state.route.ayah);
   else if (state.route.name === "bookmarks") renderBookmarks();
+   else if (state.route.name === "direction") renderDirection();
   else if (state.route.name === "settings") renderSettings();
   else if (state.route.name === "account") renderAccount();
 }
@@ -808,10 +811,258 @@ function render() {
   renderShell();
   renderView();
 }
+/* =====================================================
+   RENDER: DIRECTION & PRAYER TIMES
+   ===================================================== */
+// Keep track of the countdown timer globally inside the file so we can clear it
+let activeCountdownInterval = null;
 
+async function renderDirection() {
+  const view = document.getElementById("view");
+  view.innerHTML = `
+    <div class="section" style="max-width: 640px; margin: 0 auto; text-align: center; padding-top: 30px;">
+      <h2 class="section__title">Direction & Prayer Times</h2>
+      <p class="section__sub">Detecting location & calculating local timings...</p>
+    </div>
+  `;
+
+  if (!navigator.geolocation) {
+    view.innerHTML = `
+      <div class="section" style="max-width: 640px; margin: 0 auto; text-align: center; padding-top: 30px;">
+        <h2 class="section__title">Direction & Prayer Times</h2>
+        <p class="section__sub" style="color: var(--danger);">Geolocation is not supported by your browser.</p>
+      </div>
+    `;
+    return;
+  }
+
+  function getAutoParams(lat, lon) {
+    let method = 3; 
+    let school = 0; 
+    if (lat >= 5 && lat <= 38 && lon >= 60 && lon >= 92) {
+      method = 1; // Karachi / South Asia
+      school = 1; // Hanafi
+    } else if (lat >= 12 && lat <= 32 && lon >= 34 && lon <= 56) {
+      method = 4;
+      school = 0;
+    } else if (lat >= 24 && lat <= 50 && lon >= -125 && lon <= -65) {
+      method = 2;
+      school = 0;
+    }
+    return { method, school };
+  }
+
+  function format12Hour(timeStr, offsetMinutes = 0) {
+    if (!timeStr) return "";
+    const cleanTime = timeStr.split(" ")[0];
+    const [hStr, mStr] = cleanTime.split(":");
+    let date = new Date();
+    date.setHours(parseInt(hStr, 10), parseInt(mStr, 10) + offsetMinutes, 0);
+
+    let h = date.getHours();
+    const m = String(date.getMinutes()).padStart(2, '0');
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12;
+    h = h ? h : 12;
+    return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      const { method, school } = getAutoParams(lat, lon);
+
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const year = now.getFullYear();
+      const dateStr = `${day}-${month}-${year}`;
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+      try {
+        const [timingRes, qiblaRes] = await Promise.all([
+          fetch(`https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lon}&method=${method}&school=${school}&timezonestring=${encodeURIComponent(userTimeZone)}`),
+          fetch(`https://api.aladhan.com/v1/qibla/${lat}/${lon}`)
+        ]);
+
+        const timingData = await timingRes.json();
+        const qiblaData = await qiblaRes.json();
+
+        const timings = timingData.data.timings;
+        const qiblaAngle = qiblaData.data.direction || 0;
+
+        let isJamaatMode = false;
+
+        function renderContent() {
+          const offsets = isJamaatMode ? { Fajr: 40, Dhuhr: 30, Asr: 30, Maghrib: 5, Isha: 30 } : { Fajr: 0, Dhuhr: 0, Asr: 0, Maghrib: 0, Isha: 0 };
+
+          view.innerHTML = `
+            <div class="settings-grid" style="padding-top: 20px;">
+              
+              <!-- Today's Prayer Timings Card -->
+              <div class="settings-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                  <h3 style="margin:0;">Today's Prayer Timings</h3>
+                  <button id="toggle-jamaat-btn" style="background: var(--bg-surface); border: 1px solid var(--border); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; cursor: pointer; color: var(--fg);">
+                    ${isJamaatMode ? "Mosque Jama'at" : "Adhan Start"} Mode
+                  </button>
+                </div>
+                <p id="next-prayer-countdown" style="font-size: 0.85rem; color: var(--accent); font-weight: 600; margin-bottom: 20px;">Calculating next prayer...</p>
+
+                <div class="settings-row"><span class="settings-row__label">Fajr</span><span class="settings-row__desc">${format12Hour(timings.Fajr, offsets.Fajr)}</span></div>
+                <div class="settings-row"><span class="settings-row__label">Dhuhr</span><span class="settings-row__desc">${format12Hour(timings.Dhuhr, offsets.Dhuhr)}</span></div>
+                <div class="settings-row"><span class="settings-row__label">Asr</span><span class="settings-row__desc">${format12Hour(timings.Asr, offsets.Asr)}</span></div>
+                <div class="settings-row"><span class="settings-row__label">Maghrib</span><span class="settings-row__desc">${format12Hour(timings.Maghrib, offsets.Maghrib)}</span></div>
+                <div class="settings-row"><span class="settings-row__label">Isha</span><span class="settings-row__desc">${format12Hour(timings.Isha, offsets.Isha)}</span></div>
+              </div>
+
+              <!-- Compass & Kaaba Card -->
+              <div class="settings-card" style="text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: 520px; padding: 30px 20px;">
+                <div>
+                  <h3 style="margin-bottom:2px;">Qibla Direction</h3>
+                  <p style="margin-bottom: 10px; font-size:0.9rem; color: var(--fg-muted);">${qiblaAngle.toFixed(1)}° from True North</p>
+                </div>
+                
+                <!-- Compass Container -->
+                <div style="position: relative; width: 250px; height: 250px; display: flex; align-items: center; justify-content: center; margin: 10px 0;">
+                  
+                  <svg width="250" height="250" viewBox="0 0 200 200" style="position: absolute; top: 0; left: 0;">
+                    <!-- Black Outer Compass Dial as requested -->
+                    <circle cx="100" cy="100" r="95" fill="#121826" stroke="rgba(255, 255, 255, 0.4)" stroke-width="2.5" />
+                    <circle cx="100" cy="100" r="82" fill="none" stroke="rgba(255, 255, 255, 0.2)" stroke-width="1" stroke-dasharray="2 4" />
+                    
+                    <text x="100" y="27" text-anchor="middle" fill="#ffffff" font-weight="900" font-size="16">N</text>
+                    <text x="100" y="186" text-anchor="middle" fill="rgba(255,255,255,0.75)" font-weight="700" font-size="14">S</text>
+                    <text x="180" y="105" text-anchor="middle" fill="rgba(255,255,255,0.75)" font-weight="700" font-size="14">E</text>
+                    <text x="20" y="105" text-anchor="middle" fill="rgba(255,255,255,0.75)" font-weight="700" font-size="14">W</text>
+                  </svg>
+
+                  <div style="position: absolute; width: 100%; height: 100%; transform: rotate(${qiblaAngle}deg); transform-origin: 50% 50%; pointer-events: none;">
+                    <div style="position: absolute; top: -1px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; border-top: 16px solid #ffd700; filter: drop-shadow(0px 2px 6px rgba(255,215,0,0.8));"></div>
+                  </div>
+
+                  <div id="qibla-arrow" style="transform: rotate(${qiblaAngle}deg); transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: 50% 50%; filter: drop-shadow(0px 6px 14px rgba(0,0,0,0.6)); width: 160px; height: 160px;">
+                    <svg width="160" height="160" viewBox="0 0 100 100">
+                      <polygon points="50,8 62,50 50,42" fill="#ffffff" />
+                      <polygon points="50,8 38,50 50,42" fill="#cbd5e1" />
+                      <polygon points="50,92 62,50 50,58" fill="#090d16" />
+                      <polygon points="50,92 38,50 50,58" fill="#1e293b" />
+                      <circle cx="50" cy="50" r="7" fill="#020617" stroke="#ffffff" stroke-width="2"/>
+                    </svg>
+                  </div>
+                </div>
+
+                <!-- Realistic 3D Kaaba Illustration -->
+                <div style="position: relative; width: 220px; height: 220px; margin-top: 10px;">
+                  <div style="position: absolute; bottom: 8px; left: 8%; width: 84%; height: 35px; background: radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 75%); border-radius: 50%;"></div>
+                  
+                  <svg viewBox="0 0 160 160" width="100%" height="100%" style="position: absolute; bottom: 10px;">
+                    <polygon points="80,138 150,108 80,78 10,108" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+                    <polygon points="80,22 138,48 80,74 22,48" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1"/>
+                    <polygon points="22,48 80,74 80,138 22,112" fill="#050505"/>
+                    <polygon points="80,74 138,48 138,112 80,138" fill="#141414"/>
+                    <polygon points="80,84 138,58 138,66 80,92" fill="#ffd700"/>
+                    <polygon points="22,58 80,84 80,92 22,66" fill="#ca8a04"/>
+                    <polygon points="94,98 109,91 109,123 94,130" fill="#facc15" stroke="#a16207" stroke-width="1"/>
+                    <line x1="101.5" y1="94.5" x2="101.5" y2="126.5" stroke="#a16207" stroke-width="0.8"/>
+                    <circle cx="80" cy="130" r="4.5" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+                  </svg>
+                </div>
+
+              </div>
+            </div>
+          `;
+
+          document.getElementById("toggle-jamaat-btn").addEventListener("click", () => {
+            isJamaatMode = !isJamaatMode;
+            renderContent(); // Re-render text values safely without spawning duplicate timers
+          });
+        }
+
+        renderContent();
+
+        // Clear any existing active interval before starting a fresh one to prevent blinking/glitching
+        if (activeCountdownInterval) clearInterval(activeCountdownInterval);
+
+        activeCountdownInterval = setInterval(() => {
+          const now = new Date();
+          const offsets = isJamaatMode ? { Fajr: 40, Dhuhr: 30, Asr: 30, Maghrib: 5, Isha: 30 } : { Fajr: 0, Dhuhr: 0, Asr: 0, Maghrib: 0, Isha: 0 };
+          const prayerList = [
+            { name: "Fajr", time: timings.Fajr, off: offsets.Fajr },
+            { name: "Dhuhr", time: timings.Dhuhr, off: offsets.Dhuhr },
+            { name: "Asr", time: timings.Asr, off: offsets.Asr },
+            { name: "Maghrib", time: timings.Maghrib, off: offsets.Maghrib },
+            { name: "Isha", time: timings.Isha, off: offsets.Isha }
+          ];
+
+          let next = null;
+          for (let p of prayerList) {
+            const cleanT = p.time.split(" ")[0];
+            const [h, m] = cleanT.split(":").map(Number);
+            const pDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m + p.off);
+            if (pDate > now) {
+              next = { name: p.name, time: pDate };
+              break;
+            }
+          }
+
+          if (!next) {
+            const cleanT = timings.Fajr.split(" ")[0];
+            const [h, m] = cleanT.split(":").map(Number);
+            const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, h, m + offsets.Fajr);
+            next = { name: "Fajr (Tomorrow)", time: tomorrow };
+          }
+
+          const diffMs = next.time - now;
+          const hrs = Math.floor(diffMs / 3600000);
+          const mins = Math.floor((diffMs % 3600000) / 60000);
+          const secs = Math.floor((diffMs % 60000) / 1000);
+
+          const timerEl = document.getElementById("next-prayer-countdown");
+          if (timerEl) {
+            timerEl.textContent = `Next: ${next.name} in ${hrs}h ${mins}m ${secs}s`;
+          }
+        }, 1000);
+
+        // Mobile gyroscope orientation listener
+        if (window.DeviceOrientationEvent) {
+          window.addEventListener("deviceorientation", (event) => {
+            let heading = event.alpha;
+            if (event.webkitCompassHeading) heading = event.webkitCompassHeading;
+            if (heading !== null && heading !== undefined) {
+              const arrow = document.getElementById("qibla-arrow");
+              if (arrow) {
+                const adjustedAngle = qiblaAngle - heading;
+                arrow.style.transform = `rotate(${adjustedAngle}deg)`;
+              }
+            }
+          });
+        }
+
+      } catch (e) {
+        view.innerHTML = `
+          <div class="section" style="max-width: 640px; margin: 0 auto; text-align: center; padding-top: 60px;">
+            <h2 class="section__title">Direction & Prayer Times</h2>
+            <p class="section__sub" style="color: var(--danger);">Failed to load prayer timings. Please check network connection.</p>
+          </div>
+        `;
+      }
+    },
+    (error) => {
+      view.innerHTML = `
+        <div class="section" style="max-width: 640px; margin: 0 auto; text-align: center; padding-top: 60px;">
+          <h2 class="section__title">Direction & Prayer Times</h2>
+          <p class="section__sub" style="color: var(--danger);">Location permission denied. Please allow location access in your browser settings.</p>
+        </div>
+      `;
+    }
+  );
+}
 /* =====================================================
    BOOT
    ===================================================== */
+
 async function boot() {
   try {
     await loadData();
