@@ -817,9 +817,24 @@ function render() {
 // Keep track of the countdown timer globally inside the file so we can clear it
 let activeCountdownInterval = null;
 let currentCompassStyle = "dial"; 
-let activeOrientationListener = null; // Track listener for cleanup
+let activeOrientationListener = null;
+
+// Global cleanup function to be called whenever changing tabs/views in your SPA
+function cleanupCompassSensors() {
+  if (activeOrientationListener) {
+    window.removeEventListener("deviceorientation", activeOrientationListener);
+    activeOrientationListener = null;
+  }
+  if (activeCountdownInterval) {
+    clearInterval(activeCountdownInterval);
+    activeCountdownInterval = null;
+  }
+}
 
 async function renderDirection() {
+  // Clean up any lingering sensors/intervals immediately
+  cleanupCompassSensors();
+
   const view = document.getElementById("view");
   view.innerHTML = `
     <div class="section" style="max-width: 640px; margin: 0 auto; text-align: center; padding-top: 30px;">
@@ -827,12 +842,6 @@ async function renderDirection() {
       <p class="section__sub">Detecting location & calculating local timings...</p>
     </div>
   `;
-
-  // Clean up any lingering background orientation listener when entering this view
-  if (activeOrientationListener) {
-    window.removeEventListener("deviceorientation", activeOrientationListener);
-    activeOrientationListener = null;
-  }
 
   if (!navigator.geolocation) {
     view.innerHTML = `
@@ -847,7 +856,7 @@ async function renderDirection() {
   function getAutoParams(lat, lon) {
     let method = 3; 
     let school = 0; 
-    if (lat >= 5 && lat <= 38 && lon >= 60 && lon <= 92) {
+    if (lat >= 5 && lat <= 38 && lon >= 60 && lon >= 92) {
       method = 1; 
       school = 1; 
     } else if (lat >= 12 && lat <= 32 && lon >= 34 && lon <= 56) {
@@ -905,7 +914,7 @@ async function renderDirection() {
         const qiblaData = await qiblaRes.json();
 
         const timings = timingData.data.timings;
-        const qiblaAngle = qiblaData.data.direction || 0; // e.g., 256.1 degrees for South-West
+        const qiblaAngle = qiblaData.data.direction || 0;
 
         let isJamaatMode = false;
         let lastVibratedState = false;
@@ -926,12 +935,10 @@ async function renderDirection() {
             </style>
 
             <div class="settings-grid" style="padding-top: 20px;">
-              
-              <!-- Prayer Timings Card -->
               <div class="settings-card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                   <h3 style="margin:0;">Today's Prayer Timings</h3>
-                  <button id="toggle-jamaat-btn" style="background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.25); padding: 5px 14px; border-radius: 20px; font-size: 0.78rem; cursor: pointer; color: var(--fg); font-weight: 600;">
+                  <button id="toggle-jamaat-btn" style="background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.25); padding: 5px 14px; border-radius: 20px; font-size: 0.78rem; cursor: pointer; color: var(--fg); font-weight: 600;">
                     ${isJamaatMode ? "Mosque Jama'at" : "Adhan Start"} Mode
                   </button>
                 </div>
@@ -952,7 +959,6 @@ async function renderDirection() {
                 <div class="settings-row"><span class="settings-row__label">Isha</span><span class="settings-row__desc">${format12Hour(timings.Isha, offsets.Isha)}</span></div>
               </div>
 
-              <!-- Compass Card -->
               <div class="settings-card" style="text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: 560px; padding: 30px 20px;">
                 <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
                   <div style="text-align: left;">
@@ -1001,7 +1007,6 @@ async function renderDirection() {
                     <circle cx="80" cy="130" r="4.5" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
                   </svg>
                 </div>
-
               </div>
             </div>
           `;
@@ -1072,19 +1077,16 @@ async function renderDirection() {
           }
         }, 1000);
 
-        // Fixed Gyroscope Listener with proper cleanup reference to prevent background sensor firing
         if (window.DeviceOrientationEvent) {
           activeOrientationListener = (event) => {
             let heading = event.alpha;
-            // Check for iOS compass heading or compute standard absolute heading
             if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
               heading = event.webkitCompassHeading;
             } else if (heading !== null && heading !== undefined) {
-              heading = 360 - heading; // Normalize standard Android alpha to compass heading
+              heading = 360 - heading;
             }
 
             if (heading !== null && heading !== undefined) {
-              // Correct subtraction alignment so that when phone points to qiblaAngle, it aligns to 0 degrees
               let rotationAngle = qiblaAngle - heading;
               const displayHeading = Math.round((heading % 360 + 360) % 360);
               
@@ -1114,6 +1116,7 @@ async function renderDirection() {
 
           window.addEventListener("deviceorientation", activeOrientationListener);
         }
+
       } catch (e) {
         view.innerHTML = `
           <div class="section" style="max-width: 640px; margin: 0 auto; text-align: center; padding-top: 60px;">
@@ -1133,6 +1136,9 @@ async function renderDirection() {
     }
   );
 }
+
+// Crucial: Make sure other tab navigation handlers in your app call cleanupCompassSensors()
+// e.g., when clicking Home, Surahs, Bookmarks, Settings, etc., add `cleanupCompassSensors();` to those functions.
 
 function getCompassHTML(style, qiblaAngle) {
   if (style === 'dial') {
@@ -1170,7 +1176,7 @@ function getCompassHTML(style, qiblaAngle) {
       <div style="position: relative; width: 230px; height: 230px; display: flex; align-items: center; justify-content: center;">
         <div id="minimal-notch-pointer" style="position: absolute; top: 0; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 12px solid #e0f2fe; transition: border-color 0.3s;"></div>
 
-        <div id="qibla-rotating-element" style="transform: rotate(0deg); transition: transform 0.3s ease-out; transform-origin: 50% 50%; width: 210px; height: 210px;">
+     <div id="qibla-rotating-element" style="transform: rotate(0deg); transition: transform 0.3s ease-out; transform-origin: 50% 50%; width: 210px; height: 210px;">
           <svg width="210" height="210" viewBox="0 0 200 200">
             <polygon id="minimal-arrow-left" points="100,20 160,120 100,100" fill="#f59e0b" />
             <polygon id="minimal-arrow-right" points="100,20 40,120 100,100" fill="#facc15" />
