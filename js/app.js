@@ -1076,14 +1076,18 @@ async function renderDirection() {
         if (window.DeviceOrientationEvent) {
           activeOrientationListener = (event) => {
             let heading = event.alpha;
-            if (event.webkitCompassHeading) heading = event.webkitCompassHeading;
-            
+            // Check for iOS compass heading or compute standard absolute heading
+            if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
+              heading = event.webkitCompassHeading;
+            } else if (heading !== null && heading !== undefined) {
+              heading = 360 - heading; // Normalize standard Android alpha to compass heading
+            }
+
             if (heading !== null && heading !== undefined) {
-              // Correct rotation formula: Rotate dial so the Qibla angle points straight up when aligned
-              const rotationAngle = qiblaAngle - heading;
+              // Correct subtraction alignment so that when phone points to qiblaAngle, it aligns to 0 degrees
+              let rotationAngle = qiblaAngle - heading;
               const displayHeading = Math.round((heading % 360 + 360) % 360);
               
-              // Check alignment against the Qibla bearing (within +/- 4 degrees)
               const normalizedDiff = Math.abs((rotationAngle % 360 + 540) % 360 - 180);
               const isAligned = normalizedDiff <= 4;
 
@@ -1110,7 +1114,6 @@ async function renderDirection() {
 
           window.addEventListener("deviceorientation", activeOrientationListener);
         }
-
       } catch (e) {
         view.innerHTML = `
           <div class="section" style="max-width: 640px; margin: 0 auto; text-align: center; padding-top: 60px;">
