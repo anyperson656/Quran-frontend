@@ -863,7 +863,7 @@ async function renderDirection() {
     } else if (lat >= 12 && lat <= 32 && lon >= 34 && lon <= 56) {
       method = 4;
       school = 0;
-    } else if (lat >= 24 && lat <= 50 && lon >= -125 && lon >= -65) {
+    } else if (lat >= 24 && lat <= 50 && lon >= -125 && lon <= -65) {
       method = 2;
       school = 0;
     }
@@ -980,9 +980,9 @@ async function renderDirection() {
                   ${getCompassHTML(currentCompassStyle, qiblaAngle)}
                 </div>
 
-                <!-- Fixed permanent display of Target Qibla Bearing and Symbol -->
+                <!-- Live phone heading degree and matching cardinal symbol -->
                 <div style="margin-top: -5px; margin-bottom: 10px;">
-                  <h2 id="live-degree-text" style="font-size: 1.8rem; font-weight: 800; margin: 0; letter-spacing: -0.5px;">${qiblaAngle.toFixed(1)}° ${qiblaCardinal}</h2>
+                  <h2 id="live-degree-text" style="font-size: 1.8rem; font-weight: 800; margin: 0; letter-spacing: -0.5px;">0° N</h2>
                 </div>
 
                 <div class="mobile-compass-thumbnails" style="display: none; width: 100%; overflow-x: auto; gap: 10px; padding: 6px 0; justify-content: center; align-items: center;">
@@ -1084,7 +1084,6 @@ async function renderDirection() {
 
         if (window.DeviceOrientationEvent) {
           activeOrientationListener = (event) => {
-            // Strict guard: if page is not active or DOM element is gone, exit and do nothing
             if (!isDirectionPageActive || !document.getElementById("qibla-rotating-element")) {
               if (activeOrientationListener) {
                 window.removeEventListener("deviceorientation", activeOrientationListener);
@@ -1101,6 +1100,7 @@ async function renderDirection() {
 
             if (heading !== null && heading !== undefined) {
               let rotationAngle = qiblaAngle - heading;
+              const displayHeading = Math.round((heading % 360 + 360) % 360);
               
               const normalizedDiff = Math.abs((rotationAngle % 360 + 540) % 360 - 180);
               const isAligned = normalizedDiff <= 4;
@@ -1108,6 +1108,11 @@ async function renderDirection() {
               const rotatingElem = document.getElementById("qibla-rotating-element");
               if (rotatingElem) {
                 rotatingElem.style.transform = `rotate(${rotationAngle}deg)`;
+              }
+
+              const liveDegEl = document.getElementById("live-degree-text");
+              if (liveDegEl) {
+                liveDegEl.textContent = `${displayHeading}° ${getCardinalDirection(displayHeading)}`;
               }
 
               updateCompassAccuracyState(currentCompassStyle, isAligned);
