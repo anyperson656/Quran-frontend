@@ -1079,6 +1079,13 @@ async function renderDirection() {
 
         if (window.DeviceOrientationEvent) {
           activeOrientationListener = (event) => {
+            // ---> ADD THIS LINE: If the compass element is gone from the DOM (user left the page), kill the listener!
+            if (!document.getElementById("qibla-rotating-element")) {
+              window.removeEventListener("deviceorientation", activeOrientationListener);
+              activeOrientationListener = null;
+              return;
+            }
+
             let heading = event.alpha;
             if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
               heading = event.webkitCompassHeading;
