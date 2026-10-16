@@ -818,9 +818,10 @@ function render() {
 let activeCountdownInterval = null;
 let currentCompassStyle = "dial"; 
 let activeOrientationListener = null;
+let isDirectionPageActive = false; // Bulletproof flag to block background code
 
-// Global cleanup function to be called whenever changing tabs/views in your SPA
 function cleanupCompassSensors() {
+  isDirectionPageActive = false; // Instantly deactivate page state
   if (activeOrientationListener) {
     window.removeEventListener("deviceorientation", activeOrientationListener);
     activeOrientationListener = null;
@@ -832,8 +833,8 @@ function cleanupCompassSensors() {
 }
 
 async function renderDirection() {
-  // Clean up any lingering sensors/intervals immediately
   cleanupCompassSensors();
+  isDirectionPageActive = true; // Activate page state
 
   const view = document.getElementById("view");
   view.innerHTML = `
@@ -920,6 +921,7 @@ async function renderDirection() {
         let lastVibratedState = false;
 
         function renderContent() {
+          if (!isDirectionPageActive) return; // Prevent rendering if left page
           const offsets = isJamaatMode ? { Fajr: 40, Dhuhr: 30, Juma: 45, Asr: 30, Maghrib: 5, Isha: 30 } : { Fajr: 0, Dhuhr: 0, Juma: 15, Asr: 0, Maghrib: 0, Isha: 0 };
 
           view.innerHTML = `
@@ -938,7 +940,8 @@ async function renderDirection() {
               <div class="settings-card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                   <h3 style="margin:0;">Today's Prayer Timings</h3>
-                  <button id="toggle-jamaat-btn" style="background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.25); padding: 5px 14px; border-radius: 20px; font-size: 0.78rem; cursor: pointer; color: var(--fg); font-weight: 600;">
+                  <!-- Toggle Button with Clean Slim Border -->
+                  <button id="toggle-jamaat-btn" style="background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); border: 1px solid var(--border); padding: 5px 14px; border-radius: 20px; font-size: 0.78rem; cursor: pointer; color: var(--fg); font-weight: 600;">
                     ${isJamaatMode ? "Mosque Jama'at" : "Adhan Start"} Mode
                   </button>
                 </div>
@@ -1037,6 +1040,7 @@ async function renderDirection() {
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
         activeCountdownInterval = setInterval(() => {
+          if (!isDirectionPageActive) return; // Stop timer if left page
           const now = new Date();
           const offsets = isJamaatMode ? { Fajr: 40, Dhuhr: 30, Juma: 45, Asr: 30, Maghrib: 5, Isha: 30 } : { Fajr: 0, Dhuhr: 0, Juma: 15, Asr: 0, Maghrib: 0, Isha: 0 };
           
@@ -1079,12 +1083,8 @@ async function renderDirection() {
 
         if (window.DeviceOrientationEvent) {
           activeOrientationListener = (event) => {
-            // ---> ADD THIS LINE: If the compass element is gone from the DOM (user left the page), kill the listener!
-            if (!document.getElementById("qibla-rotating-element")) {
-              window.removeEventListener("deviceorientation", activeOrientationListener);
-              activeOrientationListener = null;
-              return;
-            }
+            // Guard clause: if user left the direction page, ignore events completely
+            if (!isDirectionPageActive) return;
 
             let heading = event.alpha;
             if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
@@ -1144,9 +1144,6 @@ async function renderDirection() {
   );
 }
 
-// Crucial: Make sure other tab navigation handlers in your app call cleanupCompassSensors()
-// e.g., when clicking Home, Surahs, Bookmarks, Settings, etc., add `cleanupCompassSensors();` to those functions.
-
 function getCompassHTML(style, qiblaAngle) {
   if (style === 'dial') {
     return `
@@ -1183,7 +1180,7 @@ function getCompassHTML(style, qiblaAngle) {
       <div style="position: relative; width: 230px; height: 230px; display: flex; align-items: center; justify-content: center;">
         <div id="minimal-notch-pointer" style="position: absolute; top: 0; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 12px solid #e0f2fe; transition: border-color 0.3s;"></div>
 
-     <div id="qibla-rotating-element" style="transform: rotate(0deg); transition: transform 0.3s ease-out; transform-origin: 50% 50%; width: 210px; height: 210px;">
+        <div id="qibla-rotating-element" style="transform: rotate(0deg); transition: transform 0.3s ease-out; transform-origin: 50% 50%; width: 210px; height: 210px;">
           <svg width="210" height="210" viewBox="0 0 200 200">
             <polygon id="minimal-arrow-left" points="100,20 160,120 100,100" fill="#f59e0b" />
             <polygon id="minimal-arrow-right" points="100,20 40,120 100,100" fill="#facc15" />
