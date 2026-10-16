@@ -816,7 +816,8 @@ function render() {
    ===================================================== */
 // Keep track of the countdown timer globally inside the file so we can clear it
 let activeCountdownInterval = null;
-let currentCompassStyle = "dial"; // 'dial' (default), 'arrow', or 'classic'
+let currentCompassStyle = "dial"; 
+let activeOrientationListener = null; // Track listener for cleanup
 
 async function renderDirection() {
   const view = document.getElementById("view");
@@ -826,6 +827,12 @@ async function renderDirection() {
       <p class="section__sub">Detecting location & calculating local timings...</p>
     </div>
   `;
+
+  // Clean up any lingering background orientation listener when entering this view
+  if (activeOrientationListener) {
+    window.removeEventListener("deviceorientation", activeOrientationListener);
+    activeOrientationListener = null;
+  }
 
   if (!navigator.geolocation) {
     view.innerHTML = `
@@ -840,9 +847,9 @@ async function renderDirection() {
   function getAutoParams(lat, lon) {
     let method = 3; 
     let school = 0; 
-    if (lat >= 5 && lat <= 38 && lon >= 60 && lon >= 92) {
-      method = 1; // Karachi / South Asia
-      school = 1; // Hanafi
+    if (lat >= 5 && lat <= 38 && lon >= 60 && lon <= 92) {
+      method = 1; 
+      school = 1; 
     } else if (lat >= 12 && lat <= 32 && lon >= 34 && lon <= 56) {
       method = 4;
       school = 0;
@@ -898,7 +905,7 @@ async function renderDirection() {
         const qiblaData = await qiblaRes.json();
 
         const timings = timingData.data.timings;
-        const qiblaAngle = qiblaData.data.direction || 0;
+        const qiblaAngle = qiblaData.data.direction || 0; // e.g., 256.1 degrees for South-West
 
         let isJamaatMode = false;
         let lastVibratedState = false;
@@ -945,15 +952,14 @@ async function renderDirection() {
                 <div class="settings-row"><span class="settings-row__label">Isha</span><span class="settings-row__desc">${format12Hour(timings.Isha, offsets.Isha)}</span></div>
               </div>
 
-              <!-- Compass Card with Responsive Desktop Dropdown / Mobile Thumbnail Bar -->
+              <!-- Compass Card -->
               <div class="settings-card" style="text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: 560px; padding: 30px 20px;">
                 <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
                   <div style="text-align: left;">
                     <h3 style="margin-bottom:2px;">Qibla Direction</h3>
-                    <p style="margin: 0; font-size:0.85rem; color: var(--fg-muted);">${qiblaAngle.toFixed(1)}° from True North</p>
+                    <p style="margin: 0; font-size:0.85rem; color: var(--fg-muted);">${qiblaAngle.toFixed(1)}° (${getCardinalDirection(qiblaAngle)}) from True North</p>
                   </div>
                   
-                  <!-- Desktop Dropdown Switcher -->
                   <select id="compass-style-select" class="desktop-compass-select" style="background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.22); padding: 6px 12px; border-radius: 20px; font-size: 0.78rem; cursor: pointer; color: var(--fg); font-weight: 600; outline: none;">
                     <option value="dial" ${currentCompassStyle === 'dial' ? 'selected' : ''} style="background: var(--bg-surface); color: var(--fg);">Compass 1 (Standard Dial)</option>
                     <option value="arrow" ${currentCompassStyle === 'arrow' ? 'selected' : ''} style="background: var(--bg-surface); color: var(--fg);">Compass 2 (Minimal Arrow)</option>
@@ -961,33 +967,28 @@ async function renderDirection() {
                   </select>
                 </div>
                 
-                <!-- Compass Display Container -->
                 <div id="compass-display-container" style="position: relative; width: 260px; height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 15px 0;">
                   ${getCompassHTML(currentCompassStyle, qiblaAngle)}
                 </div>
 
-                <!-- Live Degrees Text Display -->
                 <div style="margin-top: -5px; margin-bottom: 10px;">
-                  <h2 id="live-degree-text" style="font-size: 1.8rem; font-weight: 800; margin: 0; letter-spacing: -0.5px;">${Math.round(qiblaAngle)}° ${getCardinalDirection(qiblaAngle)}</h2>
+                  <h2 id="live-degree-text" style="font-size: 1.8rem; font-weight: 800; margin: 0; letter-spacing: -0.5px;">0° N</h2>
                 </div>
 
-                <!-- Mobile Thumbnail Selector Bar (Visible on Mobile Screens) -->
                 <div class="mobile-compass-thumbnails" style="display: none; width: 100%; overflow-x: auto; gap: 10px; padding: 6px 0; justify-content: center; align-items: center;">
-                  <div class="thumb-btn ${currentCompassStyle === 'dial' ? 'active-thumb' : ''}" data-style="dial" style="min-width: 50px; height: 50px; border-radius: 12px; border: 2px solid ${currentCompassStyle === 'dial' ? '#00aaff' : 'var(--border)'}; background: var(--bg-surface); display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                    <svg width="30" height="30" viewBox="0 0 200 200"><circle cx="100" cy="100" r="92" fill="#fff" stroke="#38bdf8" stroke-width="12"/><polygon points="100,2 108,14 92,14" fill="#38bdf8"/><polygon points="100,60 115,100 100,90" fill="#10b981"/></svg>
+                  <div class="thumb-btn" data-style="dial" style="min-width: 50px; height: 50px; border-radius: 12px; border: 2px solid ${currentCompassStyle === 'dial' ? '#00aaff' : 'var(--border)'}; background: var(--bg-surface); display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <svg width="30" height="30" viewBox="0 0 200 200"><circle cx="100" cy="100" r="92" fill="#fff" stroke="#38bdf8" stroke-width="12"/><polygon points="100,2 108,14 92,14" fill="#38bdf8"/></svg>
                   </div>
-                  <div class="thumb-btn ${currentCompassStyle === 'arrow' ? 'active-thumb' : ''}" data-style="arrow" style="min-width: 50px; height: 50px; border-radius: 12px; border: 2px solid ${currentCompassStyle === 'arrow' ? '#00aaff' : 'var(--border)'}; background: var(--bg-surface); display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                  <div class="thumb-btn" data-style="arrow" style="min-width: 50px; height: 50px; border-radius: 12px; border: 2px solid ${currentCompassStyle === 'arrow' ? '#00aaff' : 'var(--border)'}; background: var(--bg-surface); display: flex; align-items: center; justify-content: center; cursor: pointer;">
                     <svg width="30" height="30" viewBox="0 0 200 200"><polygon points="100,10 170,130 100,110 30,130" fill="#f59e0b"/></svg>
                   </div>
-                  <div class="thumb-btn ${currentCompassStyle === 'classic' ? 'active-thumb' : ''}" data-style="classic" style="min-width: 50px; height: 50px; border-radius: 12px; border: 2px solid ${currentCompassStyle === 'classic' ? '#00aaff' : 'var(--border)'}; background: var(--bg-surface); display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                  <div class="thumb-btn" data-style="classic" style="min-width: 50px; height: 50px; border-radius: 12px; border: 2px solid ${currentCompassStyle === 'classic' ? '#00aaff' : 'var(--border)'}; background: var(--bg-surface); display: flex; align-items: center; justify-content: center; cursor: pointer;">
                     <svg width="30" height="30" viewBox="0 0 200 200"><circle cx="100" cy="100" r="95" fill="#121826"/><polygon points="50,15 65,50 50,42" fill="#ffd700"/></svg>
                   </div>
                 </div>
 
-                <!-- Realistic 3D Kaaba Graphic -->
                 <div style="position: relative; width: 170px; height: 170px;">
                   <div style="position: absolute; bottom: 8px; left: 8%; width: 84%; height: 30px; background: radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 75%); border-radius: 50%;"></div>
-                  
                   <svg viewBox="0 0 160 160" width="100%" height="100%" style="position: absolute; bottom: 10px;">
                     <polygon points="80,138 150,108 80,78 10,108" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
                     <polygon points="80,22 138,48 80,74 22,48" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1"/>
@@ -1071,25 +1072,29 @@ async function renderDirection() {
           }
         }, 1000);
 
+        // Fixed Gyroscope Listener with proper cleanup reference to prevent background sensor firing
         if (window.DeviceOrientationEvent) {
-          window.addEventListener("deviceorientation", (event) => {
+          activeOrientationListener = (event) => {
             let heading = event.alpha;
             if (event.webkitCompassHeading) heading = event.webkitCompassHeading;
+            
             if (heading !== null && heading !== undefined) {
-              const adjustedAngle = qiblaAngle - heading;
-              const displayAngle = Math.round((heading % 360 + 360) % 360);
+              // Correct rotation formula: Rotate dial so the Qibla angle points straight up when aligned
+              const rotationAngle = qiblaAngle - heading;
+              const displayHeading = Math.round((heading % 360 + 360) % 360);
               
-              const normalizedDiff = Math.abs((adjustedAngle % 360 + 540) % 360 - 180);
-              const isAligned = normalizedDiff <= 3;
+              // Check alignment against the Qibla bearing (within +/- 4 degrees)
+              const normalizedDiff = Math.abs((rotationAngle % 360 + 540) % 360 - 180);
+              const isAligned = normalizedDiff <= 4;
 
               const rotatingElem = document.getElementById("qibla-rotating-element");
               if (rotatingElem) {
-                rotatingElem.style.transform = `rotate(${adjustedAngle}deg)`;
+                rotatingElem.style.transform = `rotate(${rotationAngle}deg)`;
               }
 
               const liveDegEl = document.getElementById("live-degree-text");
               if (liveDegEl) {
-                liveDegEl.textContent = `${displayAngle}° ${getCardinalDirection(displayAngle)}`;
+                liveDegEl.textContent = `${displayHeading}° ${getCardinalDirection(displayHeading)}`;
               }
 
               updateCompassAccuracyState(currentCompassStyle, isAligned);
@@ -1101,7 +1106,9 @@ async function renderDirection() {
                 lastVibratedState = false;
               }
             }
-          });
+          };
+
+          window.addEventListener("deviceorientation", activeOrientationListener);
         }
 
       } catch (e) {
@@ -1124,20 +1131,16 @@ async function renderDirection() {
   );
 }
 
-// Helper to generate exact match SVG HTML for Compass Styles
 function getCompassHTML(style, qiblaAngle) {
   if (style === 'dial') {
-    // Compass Style 1: Exact match with top pointed tab & inner layout matching screenshot
     return `
-      <div id="qibla-rotating-element" style="transform: rotate(${qiblaAngle}deg); transition: transform 0.4s ease-out; transform-origin: 50% 50%; width: 250px; height: 250px;">
+      <div id="qibla-rotating-element" style="transform: rotate(0deg); transition: transform 0.3s ease-out; transform-origin: 50% 50%; width: 250px; height: 250px;">
         <svg width="250" height="250" viewBox="0 0 200 200">
-          <!-- Outer Blue Ring with Top Pointed Tab -->
           <circle id="compass-outer-ring" cx="100" cy="100" r="90" fill="#ffffff" stroke="#38bdf8" stroke-width="10" />
           <polygon id="compass-ring-pointer" points="100,0 110,12 90,12" fill="#38bdf8" />
           
           <circle cx="100" cy="100" r="78" fill="none" stroke="#cbd5e1" stroke-width="0.8" stroke-dasharray="2 4" />
           
-          <!-- Inner Degree Marks & Correct Cardinal Layout -->
           <text x="100" y="30" text-anchor="middle" fill="#0f172a" font-weight="700" font-size="11">90</text>
           <text x="170" y="104" text-anchor="middle" fill="#0f172a" font-weight="700" font-size="11">E</text>
           <text x="100" y="176" text-anchor="middle" fill="#0f172a" font-weight="700" font-size="11">S</text>
@@ -1149,25 +1152,22 @@ function getCompassHTML(style, qiblaAngle) {
           <text x="50" y="56" text-anchor="middle" fill="#64748b" font-size="8">300</text>
           <text x="100" y="46" text-anchor="middle" fill="#ef4444" font-weight="800" font-size="10">N</text>
 
-          <!-- Center Kaaba Badge Icon -->
           <circle cx="100" cy="100" r="18" fill="#0284c7" />
           <rect x="89" y="89" width="22" height="22" fill="#0f172a" rx="2" />
           <rect x="89" y="93" width="22" height="3" fill="#eab308" />
           <rect x="98" y="101" width="6" height="10" fill="#facc15" />
 
-          <!-- Green Directional Arrow Pointer -->
           <polygon points="100,122 112,150 100,142" fill="#10b981" />
           <polygon points="100,122 88,150 100,142" fill="#059669" />
         </svg>
       </div>
     `;
   } else if (style === 'arrow') {
-    // Compass Style 2: Minimalist Arrow with Top Notch
     return `
       <div style="position: relative; width: 230px; height: 230px; display: flex; align-items: center; justify-content: center;">
         <div id="minimal-notch-pointer" style="position: absolute; top: 0; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 12px solid #e0f2fe; transition: border-color 0.3s;"></div>
 
-        <div id="qibla-rotating-element" style="transform: rotate(${qiblaAngle}deg); transition: transform 0.4s ease-out; transform-origin: 50% 50%; width: 210px; height: 210px;">
+        <div id="qibla-rotating-element" style="transform: rotate(0deg); transition: transform 0.3s ease-out; transform-origin: 50% 50%; width: 210px; height: 210px;">
           <svg width="210" height="210" viewBox="0 0 200 200">
             <polygon id="minimal-arrow-left" points="100,20 160,120 100,100" fill="#f59e0b" />
             <polygon id="minimal-arrow-right" points="100,20 40,120 100,100" fill="#facc15" />
@@ -1181,7 +1181,6 @@ function getCompassHTML(style, qiblaAngle) {
       </div>
     `;
   } else {
-    // Compass Style 3: Classic Glassy Dark
     return `
       <div style="position: relative; width: 250px; height: 250px; display: flex; align-items: center; justify-content: center;">
         <svg width="250" height="250" viewBox="0 0 200 200" style="position: absolute; top: 0; left: 0;">
@@ -1193,7 +1192,7 @@ function getCompassHTML(style, qiblaAngle) {
           <text x="20" y="105" text-anchor="middle" fill="rgba(255,255,255,0.75)" font-weight="700" font-size="14">W</text>
         </svg>
 
-        <div id="qibla-rotating-element" style="transform: rotate(${qiblaAngle}deg); transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: 50% 50%; filter: drop-shadow(0px 6px 14px rgba(0,0,0,0.6)); width: 160px; height: 160px;">
+        <div id="qibla-rotating-element" style="transform: rotate(0deg); transition: transform 0.3s ease-out; transform-origin: 50% 50%; filter: drop-shadow(0px 6px 14px rgba(0,0,0,0.6)); width: 160px; height: 160px;">
           <svg width="160" height="160" viewBox="0 0 100 100">
             <polygon id="classic-qibla-pointer" points="50,8 62,50 50,42" fill="#ffd700" />
             <polygon points="50,8 38,50 50,42" fill="#eab308" />
@@ -1207,7 +1206,6 @@ function getCompassHTML(style, qiblaAngle) {
   }
 }
 
-// Update Compass Accuracy Color State
 function updateCompassAccuracyState(style, isAligned) {
   if (style === 'dial') {
     const ring = document.getElementById("compass-outer-ring");
