@@ -863,7 +863,7 @@ async function renderDirection() {
     } else if (lat >= 12 && lat <= 32 && lon >= 34 && lon <= 56) {
       method = 4;
       school = 0;
-    } else if (lat >= 24 && lat <= 50 && lon >= -125 && lon <= -65) {
+    } else if (lat >= 24 && lat <= 50 && lon >= -125 && lon >= -65) {
       method = 2;
       school = 0;
     }
@@ -885,7 +885,6 @@ async function renderDirection() {
     return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
   }
 
-  // Calculate cardinal symbol dynamically for any angle worldwide
   function getCardinalDirection(angle) {
     const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
     const index = Math.round(((angle %= 360) < 0 ? angle + 360 : angle) / 45) % 8;
@@ -916,7 +915,7 @@ async function renderDirection() {
         const qiblaData = await qiblaRes.json();
 
         const timings = timingData.data.timings;
-        const qiblaAngle = qiblaData.data.direction || 0; // Exact bearing to Kaaba
+        const qiblaAngle = qiblaData.data.direction || 0; 
         const qiblaCardinal = getCardinalDirection(qiblaAngle);
 
         let isJamaatMode = false;
@@ -942,8 +941,7 @@ async function renderDirection() {
               <div class="settings-card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                   <h3 style="margin:0;">Today's Prayer Timings</h3>
-                  <!-- Clean Visible Border on Toggle Button -->
-                  <button id="toggle-jamaat-btn" style="background: rgba(255, 255, 255, 0.25); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1.5px solid rgba(0, 0, 0, 0.22); padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; color: var(--fg); font-weight: 700; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                  <button id="toggle-jamaat-btn" style="background: rgba(255, 255, 255, 0.25); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1.5px solid rgba(0, 0, 0, 0.25); padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; color: var(--fg); font-weight: 700; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
                     ${isJamaatMode ? "Mosque Jama'at" : "Adhan Start"} Mode
                   </button>
                 </div>
@@ -982,9 +980,9 @@ async function renderDirection() {
                   ${getCompassHTML(currentCompassStyle, qiblaAngle)}
                 </div>
 
-                <!-- Display Exact Target Qibla Bearing and Symbol -->
+                <!-- Fixed permanent display of Target Qibla Bearing and Symbol -->
                 <div style="margin-top: -5px; margin-bottom: 10px;">
-                  <h2 id="live-degree-text" style="font-size: 1.8rem; font-weight: 800; margin: 0; letter-spacing: -0.5px;">${Math.round(qiblaAngle)}° ${qiblaCardinal}</h2>
+                  <h2 id="live-degree-text" style="font-size: 1.8rem; font-weight: 800; margin: 0; letter-spacing: -0.5px;">${qiblaAngle.toFixed(1)}° ${qiblaCardinal}</h2>
                 </div>
 
                 <div class="mobile-compass-thumbnails" style="display: none; width: 100%; overflow-x: auto; gap: 10px; padding: 6px 0; justify-content: center; align-items: center;">
@@ -1086,7 +1084,13 @@ async function renderDirection() {
 
         if (window.DeviceOrientationEvent) {
           activeOrientationListener = (event) => {
-            if (!isDirectionPageActive) return;
+            // Strict guard: if page is not active or DOM element is gone, exit and do nothing
+            if (!isDirectionPageActive || !document.getElementById("qibla-rotating-element")) {
+              if (activeOrientationListener) {
+                window.removeEventListener("deviceorientation", activeOrientationListener);
+              }
+              return;
+            }
 
             let heading = event.alpha;
             if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
@@ -1097,7 +1101,6 @@ async function renderDirection() {
 
             if (heading !== null && heading !== undefined) {
               let rotationAngle = qiblaAngle - heading;
-              const displayHeading = Math.round((heading % 360 + 360) % 360);
               
               const normalizedDiff = Math.abs((rotationAngle % 360 + 540) % 360 - 180);
               const isAligned = normalizedDiff <= 4;
@@ -1105,12 +1108,6 @@ async function renderDirection() {
               const rotatingElem = document.getElementById("qibla-rotating-element");
               if (rotatingElem) {
                 rotatingElem.style.transform = `rotate(${rotationAngle}deg)`;
-              }
-
-              const liveDegEl = document.getElementById("live-degree-text");
-              if (liveDegEl) {
-                // Live text display dynamically reflecting heading and cardinal symbol
-                liveDegEl.textContent = `${displayHeading}° ${getCardinalDirection(displayHeading)}`;
               }
 
               updateCompassAccuracyState(currentCompassStyle, isAligned);
@@ -1157,7 +1154,6 @@ function getCompassHTML(style, qiblaAngle) {
           
           <circle cx="100" cy="100" r="78" fill="none" stroke="#cbd5e1" stroke-width="0.8" stroke-dasharray="2 4" />
           
-          <!-- Correct Cardinal Marks Alignment -->
           <text x="100" y="32" text-anchor="middle" fill="#ef4444" font-weight="800" font-size="11">N</text>
           <text x="172" y="104" text-anchor="middle" fill="#0f172a" font-weight="700" font-size="11">E</text>
           <text x="100" y="176" text-anchor="middle" fill="#0f172a" font-weight="700" font-size="11">S</text>
@@ -1219,6 +1215,33 @@ function getCompassHTML(style, qiblaAngle) {
         </div>
       </div>
     `;
+  }
+}
+
+function updateCompassAccuracyState(style, isAligned) {
+  if (style === 'dial') {
+    const ring = document.getElementById("compass-outer-ring");
+    const pointer = document.getElementById("compass-ring-pointer");
+    if (ring && pointer) {
+      ring.setAttribute("stroke", isAligned ? "#22c55e" : "#38bdf8");
+      pointer.setAttribute("fill", isAligned ? "#22c55e" : "#38bdf8");
+    }
+  } else if (style === 'arrow') {
+    const arrowLeft = document.getElementById("minimal-arrow-left");
+    const arrowRight = document.getElementById("minimal-arrow-right");
+    const notch = document.getElementById("minimal-notch-pointer");
+    if (arrowLeft && arrowRight) {
+      arrowLeft.setAttribute("fill", isAligned ? "#22c55e" : "#f59e0b");
+      arrowRight.setAttribute("fill", isAligned ? "#4ade80" : "#facc15");
+    }
+    if (notch) {
+      notch.style.borderTopColor = isAligned ? "#22c55e" : "#e0f2fe";
+    }
+  } else if (style === 'classic') {
+    const pointer = document.getElementById("classic-qibla-pointer");
+    if (pointer) {
+      pointer.setAttribute("fill", isAligned ? "#22c55e" : "#ffd700");
+    }
   }
 }
 /* =====================================================
