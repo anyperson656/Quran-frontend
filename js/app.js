@@ -818,10 +818,10 @@ function render() {
 let activeCountdownInterval = null;
 let currentCompassStyle = "dial"; 
 let activeOrientationListener = null;
-let isDirectionPageActive = false; // Bulletproof flag to block background code
+let isDirectionPageActive = false; 
 
 function cleanupCompassSensors() {
-  isDirectionPageActive = false; // Instantly deactivate page state
+  isDirectionPageActive = false; 
   if (activeOrientationListener) {
     window.removeEventListener("deviceorientation", activeOrientationListener);
     activeOrientationListener = null;
@@ -834,7 +834,7 @@ function cleanupCompassSensors() {
 
 async function renderDirection() {
   cleanupCompassSensors();
-  isDirectionPageActive = true; // Activate page state
+  isDirectionPageActive = true; 
 
   const view = document.getElementById("view");
   view.innerHTML = `
@@ -885,6 +885,7 @@ async function renderDirection() {
     return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
   }
 
+  // Calculate cardinal symbol dynamically for any angle worldwide
   function getCardinalDirection(angle) {
     const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
     const index = Math.round(((angle %= 360) < 0 ? angle + 360 : angle) / 45) % 8;
@@ -915,13 +916,14 @@ async function renderDirection() {
         const qiblaData = await qiblaRes.json();
 
         const timings = timingData.data.timings;
-        const qiblaAngle = qiblaData.data.direction || 0;
+        const qiblaAngle = qiblaData.data.direction || 0; // Exact bearing to Kaaba
+        const qiblaCardinal = getCardinalDirection(qiblaAngle);
 
         let isJamaatMode = false;
         let lastVibratedState = false;
 
         function renderContent() {
-          if (!isDirectionPageActive) return; // Prevent rendering if left page
+          if (!isDirectionPageActive) return; 
           const offsets = isJamaatMode ? { Fajr: 40, Dhuhr: 30, Juma: 45, Asr: 30, Maghrib: 5, Isha: 30 } : { Fajr: 0, Dhuhr: 0, Juma: 15, Asr: 0, Maghrib: 0, Isha: 0 };
 
           view.innerHTML = `
@@ -940,8 +942,8 @@ async function renderDirection() {
               <div class="settings-card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                   <h3 style="margin:0;">Today's Prayer Timings</h3>
-                  <!-- Toggle Button with Clean Slim Border -->
-                  <button id="toggle-jamaat-btn" style="background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); border: 1px solid var(--border); padding: 5px 14px; border-radius: 20px; font-size: 0.78rem; cursor: pointer; color: var(--fg); font-weight: 600;">
+                  <!-- Clean Visible Border on Toggle Button -->
+                  <button id="toggle-jamaat-btn" style="background: rgba(255, 255, 255, 0.25); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1.5px solid rgba(0, 0, 0, 0.22); padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; color: var(--fg); font-weight: 700; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
                     ${isJamaatMode ? "Mosque Jama'at" : "Adhan Start"} Mode
                   </button>
                 </div>
@@ -966,10 +968,10 @@ async function renderDirection() {
                 <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
                   <div style="text-align: left;">
                     <h3 style="margin-bottom:2px;">Qibla Direction</h3>
-                    <p style="margin: 0; font-size:0.85rem; color: var(--fg-muted);">${qiblaAngle.toFixed(1)}° (${getCardinalDirection(qiblaAngle)}) from True North</p>
+                    <p style="margin: 0; font-size:0.85rem; color: var(--fg-muted);">${qiblaAngle.toFixed(1)}° (${qiblaCardinal}) from True North</p>
                   </div>
                   
-                  <select id="compass-style-select" class="desktop-compass-select" style="background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.22); padding: 6px 12px; border-radius: 20px; font-size: 0.78rem; cursor: pointer; color: var(--fg); font-weight: 600; outline: none;">
+                  <select id="compass-style-select" class="desktop-compass-select" style="background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(12px); border: 1px solid rgba(0, 0, 0, 0.18); padding: 6px 12px; border-radius: 20px; font-size: 0.78rem; cursor: pointer; color: var(--fg); font-weight: 600; outline: none;">
                     <option value="dial" ${currentCompassStyle === 'dial' ? 'selected' : ''} style="background: var(--bg-surface); color: var(--fg);">Compass 1 (Standard Dial)</option>
                     <option value="arrow" ${currentCompassStyle === 'arrow' ? 'selected' : ''} style="background: var(--bg-surface); color: var(--fg);">Compass 2 (Minimal Arrow)</option>
                     <option value="classic" ${currentCompassStyle === 'classic' ? 'selected' : ''} style="background: var(--bg-surface); color: var(--fg);">Compass 3 (Dark Glassy)</option>
@@ -980,8 +982,9 @@ async function renderDirection() {
                   ${getCompassHTML(currentCompassStyle, qiblaAngle)}
                 </div>
 
+                <!-- Display Exact Target Qibla Bearing and Symbol -->
                 <div style="margin-top: -5px; margin-bottom: 10px;">
-                  <h2 id="live-degree-text" style="font-size: 1.8rem; font-weight: 800; margin: 0; letter-spacing: -0.5px;">0° N</h2>
+                  <h2 id="live-degree-text" style="font-size: 1.8rem; font-weight: 800; margin: 0; letter-spacing: -0.5px;">${Math.round(qiblaAngle)}° ${qiblaCardinal}</h2>
                 </div>
 
                 <div class="mobile-compass-thumbnails" style="display: none; width: 100%; overflow-x: auto; gap: 10px; padding: 6px 0; justify-content: center; align-items: center;">
@@ -1040,7 +1043,7 @@ async function renderDirection() {
         if (activeCountdownInterval) clearInterval(activeCountdownInterval);
 
         activeCountdownInterval = setInterval(() => {
-          if (!isDirectionPageActive) return; // Stop timer if left page
+          if (!isDirectionPageActive) return; 
           const now = new Date();
           const offsets = isJamaatMode ? { Fajr: 40, Dhuhr: 30, Juma: 45, Asr: 30, Maghrib: 5, Isha: 30 } : { Fajr: 0, Dhuhr: 0, Juma: 15, Asr: 0, Maghrib: 0, Isha: 0 };
           
@@ -1083,7 +1086,6 @@ async function renderDirection() {
 
         if (window.DeviceOrientationEvent) {
           activeOrientationListener = (event) => {
-            // Guard clause: if user left the direction page, ignore events completely
             if (!isDirectionPageActive) return;
 
             let heading = event.alpha;
@@ -1107,6 +1109,7 @@ async function renderDirection() {
 
               const liveDegEl = document.getElementById("live-degree-text");
               if (liveDegEl) {
+                // Live text display dynamically reflecting heading and cardinal symbol
                 liveDegEl.textContent = `${displayHeading}° ${getCardinalDirection(displayHeading)}`;
               }
 
@@ -1154,16 +1157,16 @@ function getCompassHTML(style, qiblaAngle) {
           
           <circle cx="100" cy="100" r="78" fill="none" stroke="#cbd5e1" stroke-width="0.8" stroke-dasharray="2 4" />
           
-          <text x="100" y="30" text-anchor="middle" fill="#0f172a" font-weight="700" font-size="11">90</text>
-          <text x="170" y="104" text-anchor="middle" fill="#0f172a" font-weight="700" font-size="11">E</text>
+          <!-- Correct Cardinal Marks Alignment -->
+          <text x="100" y="32" text-anchor="middle" fill="#ef4444" font-weight="800" font-size="11">N</text>
+          <text x="172" y="104" text-anchor="middle" fill="#0f172a" font-weight="700" font-size="11">E</text>
           <text x="100" y="176" text-anchor="middle" fill="#0f172a" font-weight="700" font-size="11">S</text>
-          <text x="30" y="104" text-anchor="middle" fill="#0f172a" font-weight="700" font-size="11">W</text>
+          <text x="28" y="104" text-anchor="middle" fill="#0f172a" font-weight="700" font-size="11">W</text>
           
-          <text x="150" y="56" text-anchor="middle" fill="#64748b" font-size="8">120</text>
-          <text x="150" y="152" text-anchor="middle" fill="#64748b" font-size="8">180</text>
+          <text x="150" y="56" text-anchor="middle" fill="#64748b" font-size="8">60</text>
+          <text x="150" y="152" text-anchor="middle" fill="#64748b" font-size="8">120</text>
           <text x="50" y="152" text-anchor="middle" fill="#64748b" font-size="8">240</text>
           <text x="50" y="56" text-anchor="middle" fill="#64748b" font-size="8">300</text>
-          <text x="100" y="46" text-anchor="middle" fill="#ef4444" font-weight="800" font-size="10">N</text>
 
           <circle cx="100" cy="100" r="18" fill="#0284c7" />
           <rect x="89" y="89" width="22" height="22" fill="#0f172a" rx="2" />
@@ -1216,33 +1219,6 @@ function getCompassHTML(style, qiblaAngle) {
         </div>
       </div>
     `;
-  }
-}
-
-function updateCompassAccuracyState(style, isAligned) {
-  if (style === 'dial') {
-    const ring = document.getElementById("compass-outer-ring");
-    const pointer = document.getElementById("compass-ring-pointer");
-    if (ring && pointer) {
-      ring.setAttribute("stroke", isAligned ? "#22c55e" : "#38bdf8");
-      pointer.setAttribute("fill", isAligned ? "#22c55e" : "#38bdf8");
-    }
-  } else if (style === 'arrow') {
-    const arrowLeft = document.getElementById("minimal-arrow-left");
-    const arrowRight = document.getElementById("minimal-arrow-right");
-    const notch = document.getElementById("minimal-notch-pointer");
-    if (arrowLeft && arrowRight) {
-      arrowLeft.setAttribute("fill", isAligned ? "#22c55e" : "#f59e0b");
-      arrowRight.setAttribute("fill", isAligned ? "#4ade80" : "#facc15");
-    }
-    if (notch) {
-      notch.style.borderTopColor = isAligned ? "#22c55e" : "#e0f2fe";
-    }
-  } else if (style === 'classic') {
-    const pointer = document.getElementById("classic-qibla-pointer");
-    if (pointer) {
-      pointer.setAttribute("fill", isAligned ? "#22c55e" : "#ffd700");
-    }
   }
 }
 /* =====================================================
