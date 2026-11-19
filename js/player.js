@@ -1,6 +1,7 @@
 import { store } from "./storage.js";
 
-const RECITER_NAME = "Maher Al-Muaiqly";
+const DEFAULT_RECITER = { id: "maher_almuaiqly", name: "Maher Al-Muaiqly", surahServer: "https://server12.mp3quran.net/maher/" };
+const pad3 = (n) => String(n).padStart(3, "0");
 
 function fmtTime(sec) {
   if (!isFinite(sec) || sec < 0) return "0:00";
@@ -10,7 +11,7 @@ function fmtTime(sec) {
 }
 
 export class Player {
-  constructor({ surahs, audioMap, onSurahChange }) {
+ constructor({ surahs, audioMap, onSurahChange, reciter }) {
     this.surahs = surahs;
     this.audioMap = audioMap;
     this.onSurahChange = onSurahChange;
@@ -19,6 +20,9 @@ export class Player {
     this.audio.volume = store.getVolume();
     this.currentSurah = null;
     this.listeners = new Set();
+    this.reciter = reciter || DEFAULT_RECITER;
+    this.loadedReciter = null;
+    this._chain = null;
 
     this.audio.addEventListener("timeupdate", () => this._emit());
     this.audio.addEventListener("loadedmetadata", () => this._emit());
@@ -27,11 +31,14 @@ export class Player {
     this.audio.addEventListener("waiting", () => this._emit({ loading: true }));
     this.audio.addEventListener("canplay", () => this._emit({ loading: false }));
     this.audio.addEventListener("ended", () => {
+      if (this._chain && this._advanceChain()) return;
       if (store.getAutoplay()) this.next();
       else this._emit();
     });
     this.audio.addEventListener("error", () => {
-      this._emit({ error: "Unable to load this recitation. Please check your internet connection." });
+      if (this.currentSurah !== null) {
+        this._emit({ error: "Unable to load this recitation. Please check your internet connection." });
+      }
     });
   }
 
@@ -43,7 +50,7 @@ export class Player {
   _emit(extra = {}) {
     const state = {
       surah: this.currentSurah,
-      reciter: RECITER_NAME,
+      reciter: (this.loadedReciter || this.reciter).name,
       playing: !this.audio.paused && !this.audio.ended,
       currentTime: this.audio.currentTime || 0,
       duration: this.audio.duration || 0,
@@ -57,26 +64,70 @@ export class Player {
     this.listeners.forEach((fn) => fn(state));
   }
 
+  setReciter(reciter) {
+    this.reciter = reciter || DEFAULT_RECITER;
+    this._emit(); // updates the bar's name; current playback is not interrupted
+  }
+
+  _directUrl(n) {
+    const r = this.reciter;
+    return r.surahServer ? `${r.surahServer}${pad3(n)}.mp3` : null;
+  }
+
+  _chainUrl() {
+    const c = this._chain, r = this.loadedReciter;
+    const folder = c.step === "translation" ? r.translationFolder : r.folder;
+    return `https://everyayah.com/data/${folder}/${pad3(c.surah)}${pad3(c.ayah)}.mp3`;
+  }
+
+  _playChainClip() {
+    this.audio.src = this._chainUrl();
+    this._emit({ loading: true });
+    this.audio.play().catch(() => this._emit());
+  }
+
+  _advanceChain() {
+    const c = this._chain, r = this.loadedReciter;
+    if (c.step === "arabic" && r.translationFolder) {
+      c.step = "translation";
+      this._playChainClip();
+      return true;
+    }
+    if (c.ayah < c.count) {
+      c.ayah++;
+      c.step = "arabic";
+      this._playChainClip();
+      return true;
+    }
+    this._chain = null;
+    return false;
+  }
+
   load(surahNumber, { autoplay = true } = {}) {
-    const url = this.audioMap[String(surahNumber)];
-    if (!url) {
+    const r = this.reciter;
+    const direct = this._directUrl(surahNumber);
+    const meta = this.surahs.find((s) => s.number === surahNumber);
+    if (!direct && !(r.folder && meta)) {
       this._emit({ error: "No recitation is available for this surah yet." });
       return;
     }
-    if (this.currentSurah === surahNumber && this.audio.src) {
+    const sameLoaded =
+      this.currentSurah === surahNumber &&
+      this.loadedReciter && this.loadedReciter.id === r.id &&
+      this.audio.src && (direct || this._chain);
+    if (sameLoaded) {
       if (autoplay) this.play();
       return;
     }
     this.audio.pause();
     this.currentSurah = surahNumber;
-    this.audio.src = url;
+    this.loadedReciter = r;
+    this._chain = direct ? null : { surah: surahNumber, ayah: 1, count: meta.ayahCount, step: "arabic" };
+    this.audio.src = direct || this._chainUrl();
     this.audio.currentTime = 0;
     this._emit({ loading: true });
     if (autoplay) {
-      this.audio.play().catch(() => {
-        // Autoplay can be blocked by the browser - not an error state, just wait for a tap.
-        this._emit();
-      });
+      this.audio.play().catch(() => this._emit());
     }
     if (this.onSurahChange) this.onSurahChange(surahNumber);
   }

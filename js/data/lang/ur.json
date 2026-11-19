@@ -1,0 +1,48 @@
+{
+  "home": {
+    "kicker": "قرآن مجید",
+    "title": "قرآن",
+    "subtitle": "قرآن مجید کی تلاوت کریں، سنیں اور اپنا روحانی سفر جاری رکھیں۔",
+    "browseSurahs": "سورتیں دیکھیں",
+    "browseParahs": "پارے دیکھیں",
+    "quranWithTranslation": "📖 ترجمہ کے ساتھ قرآن",
+    "bookmarks": "نشان زدہ",
+    "totalSurahs": "کل سورتیں",
+    "totalParahs": "کل پارے",
+    "reciter": "قاری",
+    "totalAyahs": "کل آیات",
+    "continueReading": "پڑھنا جاری رکھیں",
+    "resume": "دوبارہ شروع کریں",
+    "allSurahs": "تمام سورتیں",
+    "allParahs": "تمام پارے",
+    "subtextSurahs": "پڑھنے اور سننے کے لیے کسی بھی سورت پر کلک کریں۔",
+    "subtextParahs": "پڑھنے اور سننے کے لیے کسی بھی پارے پر کلک کریں۔",
+    "searchSurahPlaceholder": "سورت کا نام یا نمبر تلاش کریں...",
+    "searchParaPlaceholder": "پارے کا نمبر یا نام تلاش کریں..."
+  },
+  "settings": {
+    "title": "ترتیبات",
+    "appearance": "مظہر",
+    "appearanceDesc": "اس ڈیوائس پر قرآن کا انداز منتخب کریں۔",
+    "theme": "تھیم",
+    "light": "روشن",
+    "dark": "تاریک",
+    "textSize": "عربی متن کا سائز",
+    "small": "چھوٹا",
+    "medium": "درمیانہ",
+    "large": "بڑا",
+    "audio": "صوتیات",
+    "autoplay": "اگلی سورت خود بخود چلائیں",
+    "autoplayDesc": "ایک سورت ختم ہونے پر اگلی سورت جاری رکھیں۔",
+    "language": "زبان",
+    "reciterVoice": "قاری کی آواز"
+  },
+  "reader": {
+    "allSurahs": "← تمام سورتیں",
+    "allParahs": "← تمام پارے",
+    "listen": "سنیں",
+    "recite": "تلاوت",
+    "reciteAyah": "اس آیت کی تلاوت کریں",
+    "reciteFromHere": "یہاں سے تلاوت شروع کریں"
+  }
+}

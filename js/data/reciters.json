@@ -1,0 +1,16 @@
+[
+  {
+    "id": "maher_almuaiqly",
+    "name": "Maher Al-Muaiqly",
+    "subtext": "Classic clear recitation",
+    "server": "https://server12.mp3quran.net/maher/",
+    "ayahServer": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/"
+  },
+  {
+    "id": "yasser_aldosari",
+    "name": "Sheikh Yasser Al-Dosari",
+    "subtext": "Emotional & resonant recitation",
+    "server": "https://server11.mp3quran.net/yasser/",
+    "ayahServer": "https://cdn.islamic.network/quran/audio/128/ar.yasserdussary/"
+  }
+]

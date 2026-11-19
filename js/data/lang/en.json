@@ -1,0 +1,48 @@
+{
+  "home": {
+    "kicker": "The Noble Qur'an",
+    "title": "Quran",
+    "subtitle": "Read, listen, and continue your journey through the Qur'an.",
+    "browseSurahs": "Browse Surahs",
+    "browseParahs": "Browse Parahs (Juz)",
+    "quranWithTranslation": "Qur'an with Translation",
+    "bookmarks": "Bookmarks",
+    "totalSurahs": "Total Surahs",
+    "totalParahs": "Total Parahs",
+    "reciter": "Reciter",
+    "totalAyahs": "Total Ayahs",
+    "continueReading": "CONTINUE READING",
+    "resume": "Resume",
+    "allSurahs": "All Surahs",
+    "allParahs": "All Parahs",
+    "subtextSurahs": "Tap any surah to start reading and listening.",
+    "subtextParahs": "Tap any parah to start reading and listening.",
+    "searchSurahPlaceholder": "Search surah by name or number...",
+    "searchParaPlaceholder": "Search parah by number or name..."
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "appearanceDesc": "Choose how Quran looks on this device.",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "textSize": "Arabic text size",
+    "small": "Small",
+    "medium": "Medium",
+    "large": "Large",
+    "audio": "Audio",
+    "autoplay": "Autoplay next surah",
+    "autoplayDesc": "Continue to the next surah when one finishes.",
+    "language": "Language / زبان",
+    "reciterVoice": "Reciter Voice"
+  },
+  "reader": {
+    "allSurahs": "← All Surahs",
+    "allParahs": "← All Parahs",
+    "listen": "Listen",
+    "recite": "Recite",
+    "reciteAyah": "Recite this Ayah",
+    "reciteFromHere": "Recite from here"
+  }
+}

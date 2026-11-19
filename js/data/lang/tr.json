@@ -1,0 +1,48 @@
+{
+  "home": {
+    "kicker": "Kutsal Kur'an",
+    "title": "Kur'an",
+    "subtitle": "Kur'an yolculuğunuzda okuyun, dinleyin ve kaldığınız yerden devam edin.",
+    "browseSurahs": "Sureleri Gez",
+    "browseParahs": "Cüzleri Gez",
+    "quranWithTranslation": "Mealli Kur'an",
+    "bookmarks": "Yer İşaretleri",
+    "totalSurahs": "Toplam Sure",
+    "totalParahs": "Toplam Cüz",
+    "reciter": "Kâri",
+    "totalAyahs": "Toplam Ayet",
+    "continueReading": "OKUMAYA DEVAM ET",
+    "resume": "Devam Et",
+    "allSurahs": "Tüm Sureler",
+    "allParahs": "Tüm Cüzler",
+    "subtextSurahs": "Okumaya ve dinlemeye başlamak için bir sureye dokunun.",
+    "subtextParahs": "Okumaya ve dinlemeye başlamak için bir cüze dokunun.",
+    "searchSurahPlaceholder": "Sureyi ada veya numaraya göre ara...",
+    "searchParaPlaceholder": "Cüzü numara veya ada göre ara..."
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "appearance": "Görünüm",
+    "appearanceDesc": "Kur'an'ın bu cihazda nasıl görüneceğini seçin.",
+    "theme": "Tema",
+    "light": "Açık",
+    "dark": "Koyu",
+    "textSize": "Arapça yazı boyutu",
+    "small": "Küçük",
+    "medium": "Orta",
+    "large": "Büyük",
+    "audio": "Ses",
+    "autoplay": "Sonraki sureyi otomatik oynat",
+    "autoplayDesc": "Bir sure bittiğinde sonraki sureye geç.",
+    "language": "Dil / Language",
+    "reciterVoice": "Kâri Sesi"
+  },
+  "reader": {
+    "allSurahs": "← Tüm Sureler",
+    "allParahs": "← Tüm Cüzler",
+    "listen": "Dinle",
+    "recite": "Oku",
+    "reciteAyah": "Bu ayeti oku",
+    "reciteFromHere": "Buradan itibaren oku"
+  }
+}
