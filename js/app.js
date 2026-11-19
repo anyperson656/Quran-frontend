@@ -4493,7 +4493,10 @@ async function boot() {
   try {
     await loadData();
   } catch (e) {
-    document.getElementById("view").innerHTML = `<div class="empty-state"><h3>Couldn't load the Qur'an data</h3><p>Please refresh the page. If this keeps happening, make sure the site is served over http:// (not opened directly as a file).</p></div>`;
+    const viewEl = document.getElementById("view");
+    if (viewEl) {
+      viewEl.innerHTML = `<div class="empty-state"><h3>Couldn't load the Qur'an data</h3><p>Please refresh</p></div>`;
+    }
     return;
   }
 
